@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import json
 import requests
@@ -15,6 +16,60 @@ from oauth2_callback_server import store_token_in_oauth2_callback_server
 qualifier = "DEFAULT"
 # Configurable context window for chat history
 CONTEXT_WINDOW = 10  # Number of turns (user+assistant pairs) to include in context
+
+
+def store_token_in_browser(token: str):
+    """Store the access token in browser's localStorage using JavaScript."""
+    components.html(
+        f"""
+        <script>
+            // Store token in localStorage
+            localStorage.setItem('cognito_access_token', '{token}');
+            
+            // Also send to callback server
+            fetch('http://localhost:9090/userIdentifier/token', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{user_token: '{token}'}})
+            }}).catch(err => console.error('Failed to store token in callback server:', err));
+            
+            console.log('Token stored in localStorage');
+        </script>
+        """,
+        height=0,
+    )
+
+
+def get_token_from_browser():
+    """Retrieve the access token from browser's localStorage using JavaScript."""
+    token_html = components.html(
+        """
+        <script>
+            const token = localStorage.getItem('cognito_access_token');
+            if (token) {
+                // Send token back to Streamlit
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: token}, '*');
+            } else {
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: null}, '*');
+            }
+        </script>
+        """,
+        height=0,
+    )
+    return token_html
+
+
+def clear_token_from_browser():
+    """Clear the access token from browser's localStorage."""
+    components.html(
+        """
+        <script>
+            localStorage.removeItem('cognito_access_token');
+            console.log('Token cleared from localStorage');
+        </script>
+        """,
+        height=0,
+    )
 
 
 def get_streamlit_url():
@@ -258,6 +313,72 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded",
     )
+    
+    # Add custom CSS for better styling
+    st.markdown("""
+        <style>
+        /* Main app background */
+        .stApp {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%);
+        }
+        
+        /* Sidebar styling */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #1a1f2e 0%, #0f1419 100%);
+        }
+        
+        /* Chat input box */
+        .stChatInputContainer {
+            border-top: 2px solid rgba(79, 195, 247, 0.3);
+            background: rgba(26, 31, 46, 0.8);
+        }
+        
+        /* Buttons */
+        .stButton>button {
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.4);
+        }
+        
+        /* Success/Info boxes */
+        .stSuccess {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            border-left: 4px solid #2e7d32;
+        }
+        
+        .stInfo {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            border-left: 4px solid #0d47a1;
+        }
+        
+        /* Text inputs */
+        .stTextInput>div>div>input {
+            background: rgba(30, 35, 50, 0.8);
+            border: 2px solid rgba(79, 195, 247, 0.3);
+            border-radius: 8px;
+            color: #e8f4fd;
+        }
+        
+        .stTextInput>div>div>input:focus {
+            border-color: #4fc3f7;
+            box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.2);
+        }
+        
+        /* Headers */
+        h1, h2, h3 {
+            color: #64b5f6 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
     import boto3
 
     # Check if configuration loading failed
@@ -304,12 +425,38 @@ def main():
     if st.session_state["cognito_access_token"] is None:
         st.markdown(
             """
-            <div style='max-width:480px;margin:40px auto 30px auto;padding:40px 40px 36px 40px;background:linear-gradient(145deg, #1a1f2e 0%, #242b3d 50%, #1e2537 100%);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(100,181,246,0.1);border:1px solid rgba(100,181,246,0.2);position:relative;overflow:hidden;'>
-                <div style='position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg, #64b5f6, #4fc3f7, #29b6f6, #0288d1);'></div>
+            <style>
+            @keyframes slideInDown {{
+                from {{ opacity: 0; transform: translateY(-50px); }}
+                to {{ opacity: 1; transform: translateY(0); }}
+            }}
+            @keyframes glow {{
+                0%, 100% {{ box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(100,181,246,0.1); }}
+                50% {{ box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(100,181,246,0.3); }}
+            }}
+            @keyframes topBarShimmer {{
+                0% {{ background-position: -200% 0; }}
+                100% {{ background-position: 200% 0; }}
+            }}
+            .login-container {{
+                animation: slideInDown 0.6s ease-out, glow 3s ease-in-out infinite;
+            }}
+            .top-bar {{
+                animation: topBarShimmer 3s linear infinite;
+                background: linear-gradient(90deg, #64b5f6, #4fc3f7, #29b6f6, #0288d1, #64b5f6);
+                background-size: 200% 100%;
+            }}
+            .lock-icon {{
+                animation: float 3s ease-in-out infinite;
+                display: inline-block;
+            }}
+            </style>
+            <div class='login-container' style='max-width:480px;margin:40px auto 30px auto;padding:40px 40px 36px 40px;background:linear-gradient(145deg, #1a1f2e 0%, #242b3d 50%, #1e2537 100%);border-radius:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(100,181,246,0.1);border:1px solid rgba(100,181,246,0.2);position:relative;overflow:hidden;'>
+                <div class='top-bar' style='position:absolute;top:0;left:0;right:0;height:3px;'></div>
                 <div style='text-align:center;margin-bottom:32px;'>
-                    <div style='font-size:3.5rem;margin-bottom:12px;background:linear-gradient(135deg, #64b5f6, #4fc3f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:inline-block;'>🔐</div>
+                    <div class='lock-icon' style='font-size:3.5rem;margin-bottom:12px;background:linear-gradient(135deg, #64b5f6, #4fc3f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;'>🔐</div>
                     <h2 style='color:#64b5f6;font-family:Inter,Segoe UI,Arial,sans-serif;font-weight:700;margin:0;font-size:1.8rem;letter-spacing:-0.025em;'>Bedrock AgentCore AI Login</h2>
-                    <p style='color:#b3c5d7;font-size:1.1rem;margin:12px 0 0 0;line-height:1.5;'>Secure access to your AI assistant<br><span style="color:#7a8ca0;font-size:0.95em;">🔒 End-to-end encrypted • Never stored</span></p>
+                    <p style='color:#b3c5d7;font-size:1.1rem;margin:12px 0 0 0;line-height:1.5;'>Secure access to your AI assistant<br><span style="color:#7a8ca0;font-size:0.95em;">🔒 End-to-end encrypted • Stored in browser</span></p>
                 </div>
             </div>
         """,
@@ -393,33 +540,63 @@ def main():
                     )
                     access_token = resp["AuthenticationResult"]["AccessToken"]
                     st.session_state["cognito_access_token"] = access_token
-                    st.success(
-                        "Cognito authentication successful! Redirecting to chatbot..."
-                    )
+                    
+                    # Store token in browser's localStorage for OAuth flow
+                    store_token_in_browser(access_token)
+                    
+                    # Show success with balloons!
+                    st.balloons()
+                    st.success("🎉 Authentication Successful!")
+                    st.info("🔒 Token securely stored in browser localStorage")
+                    
+                    import time
+                    time.sleep(1.5)  # Show success message briefly
                     st.rerun()
                 except Exception as e:
                     st.error(f"Cognito authentication failed: {e}")
         return  # Only return here if not authenticated
 
-    # Enhanced system status panel
+    # Enhanced system status panel with animations
     st.markdown(
         f"""
-        <div style="position:fixed;top:15px;right:25px;z-index:9999;padding:18px 24px;background:linear-gradient(145deg, #1a1f2e 0%, #242b3d 100%);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(100,181,246,0.1);font-size:0.9em;color:#90caf9;font-family:Inter,Segoe UI,Arial,sans-serif;opacity:0.95;backdrop-filter:blur(10px);border:1px solid rgba(100,181,246,0.15);">
+        <style>
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.6; }}
+        }}
+        @keyframes slideInRight {{
+            from {{ transform: translateX(100px); opacity: 0; }}
+            to {{ transform: translateX(0); opacity: 0.95; }}
+        }}
+        .status-badge {{
+            animation: slideInRight 0.5s ease-out;
+        }}
+        .status-dot {{
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }}
+        </style>
+        <div class="status-badge" style="position:fixed;top:15px;right:25px;z-index:9999;padding:18px 24px;background:linear-gradient(145deg, #1a1f2e 0%, #242b3d 100%);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(100,181,246,0.1);font-size:0.9em;color:#90caf9;font-family:Inter,Segoe UI,Arial,sans-serif;opacity:0.95;backdrop-filter:blur(10px);border:1px solid rgba(100,181,246,0.15);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#4fc3f7;font-weight:600;font-size:0.95em;">
             <span style="font-size:1.2em;">⚡</span> System Status
         </div>
         <div style="font-size:0.85em;line-height:1.4;">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;align-items:center;">
                 <span style="color:#b3c5d7;">Region:</span> 
                 <span style="color:#fff;font-weight:500;">{region}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;align-items:center;">
                 <span style="color:#b3c5d7;">Agent:</span> 
-                <span style="color:#4fc3f7;font-weight:500;">Active</span>
+                <span style="color:#4fc3f7;font-weight:500;"><span class="status-dot"></span>Active</span>
             </div>
-            <div style="display:flex;justify-content:space-between;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
                 <span style="color:#b3c5d7;">Session:</span> 
-                <span style="color:#4fc3f7;font-weight:500;">Connected</span>
+                <span style="color:#4fc3f7;font-weight:500;"><span class="status-dot"></span>Connected</span>
             </div>
         </div>
         <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg, #4fc3f7, #29b6f6);border-radius:0 0 16px 16px;"></div>
@@ -549,10 +726,35 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # Enhanced sidebar
+    # Enhanced sidebar with animations
     st.sidebar.markdown(
         """
-        <div style='text-align:center;padding:1.5rem 0;border-bottom:1px solid rgba(100,181,246,0.2);margin-bottom:1.5rem;'>
+        <style>
+        @keyframes fadeInLeft {{
+            from {{ opacity: 0; transform: translateX(-20px); }}
+            to {{ opacity: 1; transform: translateX(0); }}
+        }}
+        @keyframes featureSlideIn {{
+            from {{ opacity: 0; transform: translateX(-10px); }}
+            to {{ opacity: 1; transform: translateX(0); }}
+        }}
+        .sidebar-header {{
+            animation: fadeInLeft 0.5s ease-out;
+        }}
+        .feature-item {{
+            animation: featureSlideIn 0.5s ease-out;
+            transition: all 0.3s ease;
+        }}
+        .feature-item:hover {{
+            background: rgba(79,195,247,0.2) !important;
+            transform: translateX(5px);
+        }}
+        .feature-item:nth-child(1) {{ animation-delay: 0.1s; }}
+        .feature-item:nth-child(2) {{ animation-delay: 0.2s; }}
+        .feature-item:nth-child(3) {{ animation-delay: 0.3s; }}
+        .feature-item:nth-child(4) {{ animation-delay: 0.4s; }}
+        </style>
+        <div class='sidebar-header' style='text-align:center;padding:1.5rem 0;border-bottom:1px solid rgba(100,181,246,0.2);margin-bottom:1.5rem;'>
             <div style='font-size:3rem;margin-bottom:1rem;'>🤖</div>
             <h2 style='color:#64b5f6;font-weight:700;margin:0;font-size:1.4rem;'>Bedrock Agentcore AI</h2>
             <p style='color:#b3c5d7;font-size:0.9rem;margin:0.5rem 0 0 0;'>Conversational Intelligence</p>
@@ -561,40 +763,69 @@ def main():
         <div style='margin-bottom:1.5rem;'>
             <h3 style='color:#4fc3f7;font-size:1rem;font-weight:600;margin-bottom:1rem;'>⚙️ Features</h3>
             <div style='display:flex;flex-direction:column;gap:0.5rem;'>
-                <div style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
+                <div class='feature-item' style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
                     <span style='color:#4fc3f7;'>🔄</span>
                     <span style='color:#b3c5d7;font-size:0.9rem;'>Real-time Streaming</span>
                 </div>
-                <div style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
+                <div class='feature-item' style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
                     <span style='color:#4fc3f7;'>🧠</span>
                     <span style='color:#b3c5d7;font-size:0.9rem;'>Context Awareness</span>
                 </div>
-                <div style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
+                <div class='feature-item' style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
                     <span style='color:#4fc3f7;'>🔗</span>
                     <span style='color:#b3c5d7;font-size:0.9rem;'>Clickable URLs</span>
+                </div>
+                <div class='feature-item' style='display:flex;align-items:center;gap:10px;padding:0.5rem;background:rgba(79,195,247,0.1);border-radius:8px;'>
+                    <span style='color:#4fc3f7;'>🔒</span>
+                    <span style='color:#b3c5d7;font-size:0.9rem;'>Browser LocalStorage</span>
                 </div>
             </div>
         </div>
     """,
         unsafe_allow_html=True,
     )
+    
+    # Add logout button
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
+        clear_token_from_browser()
+        st.session_state["cognito_access_token"] = None
+        st.session_state.messages = []
+        st.success("Logged out successfully!")
+        st.rerun()
 
-    # Enhanced main header
-    st.markdown(
-        """
-        <div style='text-align:center;padding:2rem 0 1rem 0;'>
-            <div style='font-size:3.5rem;margin-bottom:0.5rem;'>🤖</div>
-            <h1 style='margin:0;font-size:2.2rem;font-weight:700;'>Bedrock Agentcore AI Chatbot</h1>
-            <p style='color:#b3c5d7;font-size:1.1rem;margin:0.5rem 0 0 0;'>Your intelligent conversation partner</p>
-        </div>
-        <div style='height:2px;background:linear-gradient(90deg, #4fc3f7, #29b6f6, #0288d1);border-radius:1px;margin:1.5rem 0;'></div>
-    """,
-        unsafe_allow_html=True,
-    )
+    # Enhanced main header - More visible!
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style='text-align:center;padding:1rem;background:linear-gradient(135deg, rgba(79,195,247,0.1) 0%, rgba(41,182,246,0.1) 100%);border-radius:16px;border:2px solid rgba(79,195,247,0.3);margin-bottom:2rem;'>
+                <h1 style='margin:0;font-size:2.5rem;color:#4fc3f7;'>🤖 Bedrock AgentCore AI</h1>
+                <p style='margin:0.5rem 0 0 0;color:#90caf9;font-size:1.1rem;'>Powered by Browser LocalStorage OAuth</p>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
 
+    # Show session metrics
+    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+    with metric_col1:
+        st.metric("🌍 Region", region)
+    with metric_col2:
+        st.metric("🔐 Auth", "Active")
+    with metric_col3:
+        st.metric("💬 Messages", len(st.session_state.get("messages", [])))
+    with metric_col4:
+        st.metric("🔗 Storage", "LocalStorage")
+    
+    st.divider()
+    
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
+        # Add welcome message
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": "👋 Welcome to Bedrock AgentCore AI! I'm here to help you with intelligent conversations. Your session is secured with browser localStorage for OAuth flows. How can I assist you today?"
+        })
     if "genesisSessionId" not in st.session_state:
         st.session_state["genesisSessionId"] = (
             genesisSessionId  # Initialize from config
@@ -665,20 +896,22 @@ def main():
             accumulated_response = ""
 
             try:
-                # Setup streaming client
+                # Setup streaming client with progress indicator
+                progress_bar = st.progress(0, text="🔄 Initializing...")
                 session_id = st.session_state.get("genesisSessionId")
                 context = build_context(st.session_state.messages, CONTEXT_WINDOW)
                 payload = json.dumps({"prompt": context})
                 bearer_token = st.session_state.get("cognito_access_token")
                 store_token_in_oauth2_callback_server(bearer_token)
+                progress_bar.progress(30, text="🔐 Authenticating...")
 
                 streaming_client = StreamingHttpBedrockAgentCoreClient(region)
+                progress_bar.progress(60, text="🤖 Connecting to AI...")
 
-                # Show initial thinking state with pulsing animation
-                message_placeholder.markdown(
-                    '<span class="thinking-bubble">🤖 💭 Bedrock Agentcore is thinking...</span>',
-                    unsafe_allow_html=True,
-                )
+                # Show initial thinking state
+                progress_bar.progress(100, text="✨ Generating response...")
+                with st.spinner("🤖 AI is thinking..."):
+                    message_placeholder.markdown("💭 Thinking...")
 
                 # Stream the response with animations
                 chunk_count = 0
@@ -783,6 +1016,7 @@ def main():
                             time.sleep(0.02)
 
                 # Final response with timing (remove streaming classes)
+                progress_bar.empty()  # Clear progress bar
                 elapsed = time.time() - start_time
                 answer = (
                     formatted_response
@@ -800,6 +1034,7 @@ def main():
                 )
 
             except Exception as e:
+                progress_bar.empty()  # Clear progress bar on error
                 error_msg = f"Sorry, I encountered an error: {str(e)}"
                 message_placeholder.markdown(
                     f'<div class="assistant-bubble">🤖 ❌ {error_msg}</div>',

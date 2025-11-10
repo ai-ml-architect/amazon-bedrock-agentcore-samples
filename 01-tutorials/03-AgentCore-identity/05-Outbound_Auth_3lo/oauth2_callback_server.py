@@ -243,37 +243,279 @@ class OAuth2CallbackServer:
 
             html_content = """
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
-                <title>OAuth2 Success</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>OAuth2 Success - AgentCore</title>
                 <style>
-                    body {
+                    * {
                         margin: 0;
                         padding: 0;
+                        box-sizing: border-box;
+                    }
+                    
+                    body {
                         height: 100vh;
                         display: flex;
                         justify-content: center;
                         align-items: center;
-                        font-family: Arial, sans-serif;
-                        background-color: #f5f5f5;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        overflow: hidden;
                     }
+                    
+                    /* Animated background particles */
+                    .particles {
+                        position: absolute;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }
+                    
+                    .particle {
+                        position: absolute;
+                        width: 10px;
+                        height: 10px;
+                        background: rgba(255, 255, 255, 0.3);
+                        border-radius: 50%;
+                        animation: float 15s infinite;
+                    }
+                    
+                    @keyframes float {
+                        0%, 100% {
+                            transform: translateY(0) translateX(0) scale(1);
+                            opacity: 0;
+                        }
+                        10% {
+                            opacity: 0.3;
+                        }
+                        90% {
+                            opacity: 0.3;
+                        }
+                        50% {
+                            transform: translateY(-100vh) translateX(50px) scale(1.5);
+                        }
+                    }
+                    
                     .container {
+                        position: relative;
+                        z-index: 10;
                         text-align: center;
-                        padding: 2rem;
-                        background-color: white;
-                        border-radius: 8px;
-                        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                        padding: 3rem 2.5rem;
+                        background: rgba(255, 255, 255, 0.95);
+                        backdrop-filter: blur(10px);
+                        border-radius: 24px;
+                        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                        max-width: 500px;
+                        animation: slideIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
                     }
+                    
+                    @keyframes slideIn {
+                        from {
+                            opacity: 0;
+                            transform: translateY(-50px) scale(0.8);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0) scale(1);
+                        }
+                    }
+                    
+                    .success-icon {
+                        width: 100px;
+                        height: 100px;
+                        margin: 0 auto 1.5rem;
+                        position: relative;
+                        animation: scaleIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) 0.2s both;
+                    }
+                    
+                    @keyframes scaleIn {
+                        from {
+                            transform: scale(0);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: scale(1);
+                            opacity: 1;
+                        }
+                    }
+                    
+                    .checkmark {
+                        width: 100px;
+                        height: 100px;
+                        border-radius: 50%;
+                        display: block;
+                        stroke-width: 3;
+                        stroke: #4CAF50;
+                        stroke-miterlimit: 10;
+                        box-shadow: inset 0 0 0 #4CAF50;
+                        animation: fill 0.4s ease-in-out 0.4s forwards, scale 0.3s ease-in-out 0.9s both;
+                    }
+                    
+                    .checkmark-circle {
+                        stroke-dasharray: 166;
+                        stroke-dashoffset: 166;
+                        stroke-width: 3;
+                        stroke-miterlimit: 10;
+                        stroke: #4CAF50;
+                        fill: none;
+                        animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+                    }
+                    
+                    .checkmark-check {
+                        transform-origin: 50% 50%;
+                        stroke-dasharray: 48;
+                        stroke-dashoffset: 48;
+                        animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+                    }
+                    
+                    @keyframes stroke {
+                        100% {
+                            stroke-dashoffset: 0;
+                        }
+                    }
+                    
+                    @keyframes scale {
+                        0%, 100% {
+                            transform: none;
+                        }
+                        50% {
+                            transform: scale3d(1.1, 1.1, 1);
+                        }
+                    }
+                    
+                    @keyframes fill {
+                        100% {
+                            box-shadow: inset 0 0 0 50px #4CAF50;
+                        }
+                    }
+                    
                     h1 {
-                        color: #28a745;
-                        margin: 0;
+                        color: #2c3e50;
+                        font-size: 2rem;
+                        font-weight: 700;
+                        margin-bottom: 1rem;
+                        animation: fadeIn 0.6s ease-in 0.4s both;
+                    }
+                    
+                    @keyframes fadeIn {
+                        from {
+                            opacity: 0;
+                            transform: translateY(20px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+                    
+                    .subtitle {
+                        color: #7f8c8d;
+                        font-size: 1.1rem;
+                        margin-bottom: 1.5rem;
+                        animation: fadeIn 0.6s ease-in 0.6s both;
+                    }
+                    
+                    .details {
+                        background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+                        padding: 1.25rem;
+                        border-radius: 12px;
+                        margin-top: 1.5rem;
+                        animation: fadeIn 0.6s ease-in 0.8s both;
+                    }
+                    
+                    .detail-item {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 0.5rem;
+                        color: #34495e;
+                        font-size: 0.95rem;
+                        margin: 0.5rem 0;
+                    }
+                    
+                    .detail-item .icon {
+                        font-size: 1.2rem;
+                    }
+                    
+                    .closing-message {
+                        margin-top: 1.5rem;
+                        color: #95a5a6;
+                        font-size: 0.9rem;
+                        animation: fadeIn 0.6s ease-in 1s both;
+                    }
+                    
+                    .spinner {
+                        display: inline-block;
+                        width: 12px;
+                        height: 12px;
+                        border: 2px solid #95a5a6;
+                        border-top-color: transparent;
+                        border-radius: 50%;
+                        animation: spin 0.8s linear infinite;
+                        margin-left: 0.5rem;
+                    }
+                    
+                    @keyframes spin {
+                        to {
+                            transform: rotate(360deg);
+                        }
                     }
                 </style>
             </head>
             <body>
-                <div class="container">
-                    <h1>Completed OAuth2 3LO flow successfully</h1>
+                <!-- Animated particles background -->
+                <div class="particles">
+                    <div class="particle" style="left: 10%; animation-delay: 0s;"></div>
+                    <div class="particle" style="left: 20%; animation-delay: 2s;"></div>
+                    <div class="particle" style="left: 30%; animation-delay: 4s;"></div>
+                    <div class="particle" style="left: 40%; animation-delay: 1s;"></div>
+                    <div class="particle" style="left: 50%; animation-delay: 3s;"></div>
+                    <div class="particle" style="left: 60%; animation-delay: 5s;"></div>
+                    <div class="particle" style="left: 70%; animation-delay: 2.5s;"></div>
+                    <div class="particle" style="left: 80%; animation-delay: 4.5s;"></div>
+                    <div class="particle" style="left: 90%; animation-delay: 1.5s;"></div>
                 </div>
+                
+                <div class="container">
+                    <!-- Animated checkmark -->
+                    <div class="success-icon">
+                        <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                            <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                        </svg>
+                    </div>
+                    
+                    <h1>🎉 OAuth2 Authentication Complete!</h1>
+                    <p class="subtitle">Your authorization was successful</p>
+                    
+                    <div class="details">
+                        <div class="detail-item">
+                            <span class="icon">✓</span>
+                            <span>3-Legged OAuth Flow Completed</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="icon">🔐</span>
+                            <span>Access Token Secured</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="icon">🔗</span>
+                            <span>Session Bound to AgentCore</span>
+                        </div>
+                    </div>
+                    
+                    <p class="closing-message">
+                        This window will close automatically<span class="spinner"></span>
+                    </p>
+                </div>
+                
+                <script>
+                    // Auto-close window after 3 seconds
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                </script>
             </body>
             </html>
             """
